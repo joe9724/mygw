@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-
 	"github.com/valyala/fasthttp"
 	"fmt"
 )
@@ -46,6 +45,8 @@ func prepareRequest(req *fasthttp.Request) {
 func postprocessResponse(resp *fasthttp.Response) {
 	// do not proxy "Connection" header
 	resp.Header.Del("Connection")
+	resp.SkipBody = false
+	resp.AppendBody([]byte("abc"))
 
 	// strip other unneeded headers
 
@@ -65,7 +66,22 @@ func main() {
 	log.Println("port:", *port)
 	log.Println("target:", *targetAddr)
 
-	if err := fasthttp.ListenAndServe("localhost:"+*port, ReverseProxyHandler); err != nil {
+	//setupMiddlewares(ReverseProxyHandler)
+	/*requestHandler := func(ctx *fasthttp.RequestCtx) {
+		fmt.Fprintf(ctx, "Hello, world! Requested path is %q", ctx.Path())
+	}*/
+
+	// 创建自定义服务器。
+	s := &fasthttp.Server{
+		Handler: ReverseProxyHandler,
+        MaxConnsPerIP:1,
+		// Every response will contain 'Server: My super server' header.
+		Name: "My super server",
+
+		// Other Server settings may be set here.
+	}
+
+	if err := s.ListenAndServe("localhost:"+*port); err != nil {
 		log.Fatalf("error in fasthttp server: %s", err)
 	}
 	fmt.Println("start server...")
