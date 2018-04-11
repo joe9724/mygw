@@ -40,7 +40,7 @@ func prepareRequest(req *fasthttp.Request) {
 	// alter other request params before sending them to upstream host
 	req.Header.SetHost(proxyAddr)
 
-	req.SetRequestURI("http://www.baidu.com")
+	req.SetRequestURI("http://widsboat-api.bitekun.xin/joe9724/data_manage/1.0.0//device/list?operator_id=2&page=0&size=12")
 }
 
 func postprocessResponse(resp *fasthttp.Response) {
@@ -57,7 +57,7 @@ func postprocessResponse(resp *fasthttp.Response) {
 
 func main() {
 	port := flag.String("port", "8082", "listen port")
-	targetAddr := flag.String("target", "www.baidu.com", "your server domain")
+	targetAddr := flag.String("target", "widsboat-api.bitekun.xin", "your server domain")
 	flag.Parse()
 
 	proxyClient.Addr = *targetAddr
