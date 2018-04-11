@@ -74,7 +74,7 @@ func main() {
 	// 创建自定义服务器。
 	s := &fasthttp.Server{
 		Handler: ReverseProxyHandler,
-        MaxConnsPerIP:10,
+        MaxConnsPerIP:1,
 		// Every response will contain 'Server: My super server' header.
 		Name: "My super server",
 
