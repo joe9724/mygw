@@ -75,6 +75,7 @@ func main() {
 	s := &fasthttp.Server{
 		Handler: ReverseProxyHandler,
         MaxConnsPerIP:1,
+		MaxRequestsPerConn:1,
 		// Every response will contain 'Server: My super server' header.
 		Name: "My super server",
 
