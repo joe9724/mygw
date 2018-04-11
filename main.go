@@ -2,31 +2,55 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 
 	"github.com/valyala/fasthttp"
+	"fmt"
 )
 
 var (
-	addr     = flag.String("addr", ":8082", "TCP address to listen to")
-	compress = flag.Bool("compress", false, "Whether to enable transparent response compression")
+	proxyAddr   string
+	proxyClient = &fasthttp.HostClient{
+		IsTLS: false,
+		Addr:  "api.yourdomain.com",
+
+		// set other options here if required - most notably timeouts.
+		// ReadTimeout: 60, // 如果在生产环境启用会出现多次请求现象
+	}
 )
 
-func main() {
-	flag.Parse()
+func ReverseProxyHandler(ctx *fasthttp.RequestCtx) {
+	req := &ctx.Request
+	resp := &ctx.Response
 
-	h := requestHandler
-	if *compress {
-		h = fasthttp.CompressHandler(h)
+	prepareRequest(req)
+
+	if err := proxyClient.Do(req, resp); err != nil {
+		ctx.Logger().Printf("error when proxying the request: %s", err)
 	}
 
-	if err := fasthttp.ListenAndServe(*addr, h); err != nil {
-		log.Fatalf("Error in ListenAndServe: %s", err)
-	}
+	postprocessResponse(ctx,resp)
 }
 
-func requestHandler(ctx *fasthttp.RequestCtx) {
+func prepareRequest(req *fasthttp.Request) {
+	// do not proxy "Connection" header.
+	req.Header.Del("Connection")
+	// strip other unneeded headers.
+
+	// alter other request params before sending them to upstream host
+	req.Header.SetHost(proxyAddr)
+}
+
+func postprocessResponse(ctx *fasthttp.RequestCtx,resp *fasthttp.Response) {
+	// do not proxy "Connection" header
+	resp.Header.Del("Connection")
+
+	// strip other unneeded headers
+
+	// alter other response data if needed
+	// resp.Header.Set("Access-Control-Allow-Origin", "*")
+	// resp.Header.Set("Access-Control-Request-Method", "OPTIONS,HEAD,POST")
+	// resp.Header.Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprintf(ctx, "Hello, world!\n\n")
 
 	fmt.Fprintf(ctx, "Request method is %q\n", ctx.Method())
@@ -52,4 +76,19 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	c.SetKey("cookie-name")
 	c.SetValue("cookie-value")
 	ctx.Response.Header.SetCookie(&c)
+}
+
+func main() {
+	port := flag.String("port", "8082", "listen port")
+	targetAddr := flag.String("target", "api.yourdomain.com", "your server domain")
+	flag.Parse()
+
+	proxyClient.Addr = *targetAddr
+
+	log.Println("port:", *port)
+	log.Println("target:", *targetAddr)
+
+	if err := fasthttp.ListenAndServe("localhost:"+*port, ReverseProxyHandler); err != nil {
+		log.Fatalf("error in fasthttp server: %s", err)
+	}
 }
